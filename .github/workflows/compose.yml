@@ -1,0 +1,50 @@
+name: 🚀 Docker Compose Deployment
+
+on:
+  push:
+    branches:
+      - 'main'  # Change this to the branch where the docker-compose.yml exists
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: main  # Ensure it checks out the correct branch
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: 🏗️ Start Services with Docker Compose
+        run: |
+          docker-compose up -d
+
+      - name: ⏳ Wait for MySQL to become healthy
+        run: |
+          echo "Waiting for MySQL container to be healthy..."
+          sleep 30  # Give time for the health check to pass
+
+      - name: 🔍 Verify Containers are Running
+        run: |
+          if docker ps --format '{{.Names}}' | grep -q "mysql_container"; then
+            echo "✅ MySQL container is running!"
+          else
+            echo "❌ MySQL container failed to start."
+            exit 1
+          fi
+          
+          if docker ps --format '{{.Names}}' | grep -q "springboot_app"; then
+            echo "✅ Spring Boot app is running!"
+          else
+            echo "❌ Spring Boot app failed to start."
+            exit 1
+          fi
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          echo "Stopping and removing containers..."
+          docker-compose down
